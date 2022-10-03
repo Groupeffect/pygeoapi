@@ -98,7 +98,6 @@ The below template provides a minimal example (let's call the file ``mycoolvecto
            return {
                '$ref': 'https://geojson.org/schema/Feature.json'
            }
-           
 
 
 For brevity, the above code will always return the single feature of the dataset.  In reality, the plugin
