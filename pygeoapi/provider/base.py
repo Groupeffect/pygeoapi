@@ -79,6 +79,15 @@ class BaseProvider:
 
         raise NotImplementedError()
 
+    def get_schema(self):
+        """
+        Get provider schema model
+
+        :returns: dict of schema (i.e. JSON Schema)
+        """
+
+        raise NotImplementedError()
+
     def get_data_path(self, baseurl, urlpath, dirpath):
         """
         Gets directory listing or file description or raw file dump
