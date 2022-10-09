@@ -39,7 +39,7 @@ import yaml
 from pygeoapi import __version__
 from pygeoapi import l10n
 from pygeoapi.plugin import load_plugin
-from pygeoapi.provider.base import ProviderTypeError
+from pygeoapi.provider.base import ProviderTypeError, SchemaType
 from pygeoapi.util import (filter_dict_by_key_value, get_provider_by_type,
                            filter_providers_by_type, to_json, yaml_load)
 
@@ -477,12 +477,6 @@ def get_oas_30(cfg):
             p = load_plugin('provider', get_provider_by_type(
                             collections[k]['providers'], ptype))
 
-            try:
-                oas['components']['schemas'][name] = p.get_schema()
-                schema_ref = {'$ref': '#/components/schemas/{}'.format(name)}
-            except NotImplementedError:
-                schema_ref = None
-
             items_path = '{}/items'.format(collection_name_path)
 
             coll_properties = deepcopy(oas['components']['parameters']['properties'])  # noqa
@@ -538,8 +532,14 @@ def get_oas_30(cfg):
                         '500': {'$ref': '{}#/components/responses/ServerError'.format(OPENAPI_YAML['oapif'])}  # noqa
                     }
                 }
-                if schema_ref is not None:
-                    paths[items_path]['post']['requestBody']['content']['application/json']['schema'] = schema_ref  # noqa
+
+                try:
+                    schema_ref = p.get_schema(SchemaType.create)
+                    paths[items_path]['post']['requestBody']['content'][schema_ref[0]] = {  # noqa
+                        'schema': schema_ref[1]
+                    }
+                except Exception as err:
+                    LOGGER.debug(err)
 
             if ptype == 'record':
                 paths[items_path]['get']['parameters'].append(
@@ -628,14 +628,18 @@ def get_oas_30(cfg):
                     }
                 }
             }
-            if schema_ref is not None:
+
+            try:
+                schema_ref = p.get_schema()
                 paths['{}/items/{{featureId}}'.format(collection_name_path)]['get']['responses']['200'] = {  # noqa
                     'content': {
-                        'application/json': {
-                            'schema': schema_ref
+                        schema_ref[0]: {
+                            'schema': schema_ref[1]
                         }
                     }
                 }
+            except Exception as err:
+                LOGGER.debug(err)
 
             if p.editable:
                 LOGGER.debug('Provider is editable; adding put/delete')
@@ -664,8 +668,13 @@ def get_oas_30(cfg):
                     }
                 }
 
-                if schema_ref is not None:
-                    paths[put_path]['put']['requestBody']['content']['application/json']['schema'] = schema_ref  # noqa
+                try:
+                    schema_ref = p.get_schema(SchemaType.replace)
+                    paths[put_path]['put']['requestBody']['content'][schema_ref[0]] = {  # noqa
+                        'schema': schema_ref[1]
+                    }
+                except Exception as err:
+                    LOGGER.debug(err)
 
                 paths['{}/items/{{featureId}}'.format(collection_name_path)]['delete'] = {  # noqa
                     'summary': 'Delete {} items'.format(title),
